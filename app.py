@@ -27,7 +27,7 @@ def init_db():
 init_db()
 
 # --- INTERFACE ---
-st.title("🩺 Gestão de Nefrologia Pediátrica - HNSM")
+st.title("🩺Nefrologia Pediátrica - HNSM")
 st.caption("Protocolo: Schwartz 1 (Jaffé) | Unidade: Hospital Nossa Senhora das Mercês")
 
 tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Histórico de Pacientes"])
