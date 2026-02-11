@@ -34,7 +34,7 @@ tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização D
 
 # --- TAB 1: CADASTRO E CÁLCULOS ---
 with tab1:
-    with st.form("cadastro_form"):
+    with st.container(border=True):
         st.subheader("👤 Identificação e Admissão")
         col_c1, col_c2 = st.columns(2)
         nome_in = col_c1.text_input("Nome do Paciente").upper()
@@ -67,7 +67,7 @@ with tab1:
         e_in = st.number_input("Estatura (cm)", 30.0, 200.0, 110.0)
         cr_in = st.number_input("Creatinina Jaffé (mg/dL)", 0.1, 10.0, 0.6)
         
-        btn_calc = st.form_submit_button("Salvar Cadastro e Calcular")
+        btn_calc = st.button("Salvar Cadastro e Calcular", type="primary")
 
     if btn_calc:
         # Fórmulas e Doses
