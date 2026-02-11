@@ -36,7 +36,7 @@ init_db()
 
 # --- 3. BARRA LATERAL (FERRAMENTAS) ---
 with st.sidebar:
-    st.header("🏥 HNSM - Pediatria")
+    st.header("🏥 Hospital Nossa Senhora das Mercês - Pediatria")
     st.info("Nefrologia Pediátrica")
     
     st.divider()
