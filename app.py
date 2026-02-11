@@ -160,6 +160,7 @@ def destacar_pa_alta(val):
 
 # Aplicar o estilo apenas na coluna 'pa'
 h_data_estilizado = h_data.style.applymap(destacar_pa_alta, subset=['pa'])
+
             st.dataframe(h_data_estilizado, use_container_width=True)
                        
             st.divider()
