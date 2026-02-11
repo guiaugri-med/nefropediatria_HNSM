@@ -36,8 +36,8 @@ init_db()
 
 # --- 3. BARRA LATERAL (FERRAMENTAS) ---
 with st.sidebar:
-    st.header("🏥 Gestão HNSM")
-    st.info("Internato de Pediatria - 2026")
+    st.header("🏥 HNSM - Pediatria")
+    st.info(Nefrologia Pediátrica)
     
     st.divider()
     st.error("🚨 **Sinais de Alerta**")
