@@ -110,7 +110,7 @@ with tab2:
         pac_id = int(pacs[pacs['nome'] == escolha.split(" (")[0]]['id'].iloc[0])
         
         st.subheader("🩺 Registro de Sinais Vitais")
-        with st.form("monitor_form"):
+        with st.container(border=True):
             c_m1, c_m2 = st.columns(2)
             d_v = c_m1.date_input("Data do Registro")
             h_v = c_m2.selectbox("Hora", ["08:00", "14:00", "20:00"])
@@ -122,7 +122,7 @@ with tab2:
             fr_v = v4.number_input("FR (irpm)", 0)
             t_v = v5.number_input("Temp (ºC)", 30.0, 42.0, 36.5)
             
-            if st.form_submit_button("Salvar na Ficha de Monitorização"):
+            if st.button("Salvar na Ficha de Monitorização"):
                 conn = sqlite3.connect('nefroped_merces.db')
                 c = conn.cursor()
                 c.execute("INSERT INTO monitorizacao (paciente_id, data, hora, peso, pa, fc, fr, temp) VALUES (?,?,?,?,?,?,?,?)",
