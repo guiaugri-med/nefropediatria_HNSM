@@ -147,8 +147,21 @@ with tab3:
             st.divider()
             st.write("**📊 Ficha de Monitorização Vascular e Metabólica**")
             h_data = pd.read_sql(f"SELECT data, hora, peso, pa, fc, fr, temp FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY data DESC, hora DESC", conn)
-            st.dataframe(h_data, use_container_width=True)
-            
+            # --- INSERIR ANTES DA LINHA 140 ---
+def destacar_pa_alta(val):
+    try:
+        # Tenta extrair a pressão sistólica (antes da barra)
+        pas = int(val.split('/')[0])
+        # Alerta para PA acima de 130 mmHg (ajustar conforme percentil do paciente)
+        color = 'red' if pas >= 130 else 'black'
+        return f'color: {color}'
+    except:
+        return 'color: black'
+
+# Aplicar o estilo apenas na coluna 'pa'
+h_data_estilizado = h_data.style.applymap(destacar_pa_alta, subset=['pa'])
+            st.dataframe(h_data_estilizado, use_container_width=True)
+                       
             st.divider()
             st.write("**💊 Conduta Inicial Gravada:**")
             st.write(f"- Prednisolona: {p_sel['dose_at']:.1f} mg (Ataque) / {p_sel['dose_mn']:.1f} mg (Manut)")
