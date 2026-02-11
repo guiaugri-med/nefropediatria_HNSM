@@ -147,7 +147,7 @@ with tab3:
             st.divider()
             st.write("**📊 Ficha de Monitorização Vascular e Metabólica**")
             h_data = pd.read_sql(f"SELECT data, hora, peso, pa, fc, fr, temp FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY data DESC, hora DESC", conn)
-            # --- INSERIR ANTES DA LINHA 140 ---
+            
 def destacar_pa_alta(val):
     try:
         # Tenta extrair a pressão sistólica (antes da barra)
