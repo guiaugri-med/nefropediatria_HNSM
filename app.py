@@ -11,13 +11,13 @@ st.set_page_config(page_title="NefroPed - Mercês", page_icon="🩺", layout="wi
 def init_db():
     conn = sqlite3.connect('nefroped_merces.db')
     c = conn.cursor()
-    # Cadastro de Pacientes
+    # Tabela de Cadastro
     c.execute('''CREATE TABLE IF NOT EXISTS pacientes 
                  (id INTEGER PRIMARY KEY, nome TEXT, leito TEXT, data_admissao TEXT, 
                   anos INTEGER, meses INTEGER, dias INTEGER, sexo TEXT, k REAL, 
                   peso_seco REAL, estatura REAL, sc REAL, tfge REAL, 
                   dose_at REAL, dose_mn REAL, vol_alb REAL, dose_furo REAL)''')
-    # Monitorização Diária com Volume Urinário
+    # Tabela de Monitorização com vol_24h
     c.execute('''CREATE TABLE IF NOT EXISTS monitorizacao 
                  (id INTEGER PRIMARY KEY, paciente_id INTEGER, data TEXT, hora TEXT, 
                   peso REAL, pa TEXT, fc INTEGER, fr INTEGER, temp REAL, vol_24h REAL)''')
@@ -26,7 +26,7 @@ def init_db():
 
 init_db()
 
-# --- BARRA LATERAL (ALERTAS E MANUTENÇÃO) ---
+# --- BARRA LATERAL (ALERTAS E RESET) ---
 with st.sidebar:
     st.header("🩺 Gestão HNSM")
     st.error("🚨 **Sinais de Alerta**")
@@ -36,22 +36,21 @@ with st.sidebar:
         st.write("- Crise Hipertensiva")
     
     st.divider()
-    # Botão para corrigir OperationalError se o banco estiver desatualizado
-    if st.button("⚠️ Resetar Banco de Dados"):
+    if st.button("⚠️ Resetar Banco de Dados", help="Clique aqui para corrigir o erro de colunas (sqlite3.OperationalError)"):
         conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS pacientes"); c.execute("DROP TABLE IF EXISTS monitorizacao")
         conn.commit(); conn.close()
         init_db()
-        st.success("Banco de dados reiniciado!")
+        st.success("Banco de dados reiniciado! Agora as novas colunas funcionam.")
         st.rerun()
 
 # --- INTERFACE PRINCIPAL ---
-st.title("Calculadora de Nefrologia Pediátrica - HNSM")
+st.title("Calculadora de Nefrologia Pediátrica")
 tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Histórico"])
 
-# --- TAB 1: CADASTRO E CÁLCULOS ---
+# --- TAB 1: CADASTRO ---
 with tab1:
-    with st.container(border=True): # Container substitui o Form para evitar o Enter
+    with st.container(border=True): # Container evita o salvamento pelo 'Enter'
         st.subheader("👤 Identificação e Admissão")
         col_c1, col_c2 = st.columns(2)
         nome_in = col_c1.text_input("Nome do Paciente").upper()
@@ -65,7 +64,7 @@ with tab1:
         dias_in = c3.number_input("Dias", 0, 30, 0)
         sexo_in = st.radio("Sexo Biológico", ["Feminino", "Masculino"], horizontal=True)
         
-        # Lógica de K automatizada (Schwartz 1 - Jaffé)
+        # Lógica de K automática (Schwartz 1) - CORRIGIDA
         total_meses = (anos_in * 12) + meses_in
         if total_meses < 12:
             prematuro = st.checkbox("Nasceu prematuro?")
@@ -75,21 +74,18 @@ with tab1:
                 k_val, cat = 0.70, "Adolescente Masculino"
             else:
                 k_val, cat = 0.55, "Criança / Adolescente Feminino"
-        
+            
         st.info(f"**Categoria Detectada:** {cat} | **K utilizado:** {k_val}")
         
-        st.divider()
-        st.subheader("🧪 Parâmetros Clínicos")
-        p_in = st.number_input("Peso na Admissão - Seco (kg)", 1.0, 150.0, 20.0)
+        p_in = st.number_input("Peso Admissão - Seco (kg)", 1.0, 150.0, 20.0)
         e_in = st.number_input("Estatura (cm)", 30.0, 200.0, 110.0)
         cr_in = st.number_input("Creatinina Jaffé (mg/dL)", 0.1, 10.0, 0.6)
         
         btn_calc = st.button("Salvar Cadastro e Calcular", type="primary")
 
     if btn_calc:
-        # Fórmulas e Doses
-        sc_calc = math.sqrt((p_in * e_in) / 3600) # Mosteller
-        tfge_calc = (k_val * e_in) / cr_in # Schwartz 1
+        sc_calc = math.sqrt((p_in * e_in) / 3600)
+        tfge_calc = (k_val * e_in) / cr_in
         at, mn = min(sc_calc * 60, 60.0), min(sc_calc * 40, 40.0)
         alb, furo = (p_in * 0.5) * 5, p_in * 0.5
         
@@ -97,23 +93,15 @@ with tab1:
         c.execute("INSERT INTO pacientes VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
                   (nome_in, leito_in, data_adm_in.strftime("%d/%m/%Y"), anos_in, meses_in, dias_in, sexo_in, k_val, p_in, e_in, sc_calc, tfge_calc, at, mn, alb, furo))
         conn.commit(); conn.close()
-        
-        st.success(f"✅ Paciente {nome_in} cadastrado com sucesso!")
-        st.divider()
-        r1, r2, r3 = st.columns(3)
-        r1.metric("Superfície Corporal", f"{sc_calc:.2f} m²")
-        r2.metric("TFGe (Schwartz 1)", f"{tfge_calc:.1f} mL/min")
-        r3.metric("K Utilizado", f"{k_val}")
-        st.warning(f"💊 **Corticoterapia:** Ataque: {at:.1f} mg/dia | Manutenção: {mn:.1f} mg (D.A.)")
-        st.info(f"💧 **Manejo de Edema:** Albumina 20%: {alb:.1f} mL | Furosemida IV: {furo:.1f} mg")
+        st.success(f"✅ Paciente {nome_in} cadastrado!")
 
-# --- TAB 2: MONITORIZAÇÃO DIÁRIA ---
+# --- TAB 2: MONITORIZAÇÃO ---
 with tab2:
     conn = sqlite3.connect('nefroped_merces.db')
     pacs = pd.read_sql("SELECT id, nome, leito FROM pacientes", conn); conn.close()
     
     if not pacs.empty:
-        escolha = st.selectbox("Selecione o Paciente para Evolução", pacs['nome'] + " (Leito: " + pacs['leito'] + ")")
+        escolha = st.selectbox("Selecione o Paciente", pacs['nome'] + " (Leito: " + pacs['leito'] + ")")
         pac_id = int(pacs[pacs['nome'] == escolha.split(" (")[0]]['id'].iloc[0])
         
         with st.container(border=True):
@@ -134,13 +122,11 @@ with tab2:
                 c.execute("INSERT INTO monitorizacao (paciente_id, data, hora, peso, pa, fc, fr, temp, vol_24h) VALUES (?,?,?,?,?,?,?,?,?,?)",
                           (pac_id, d_v.strftime("%d/%m/%Y"), h_v, p_v, pa_v, fc_v, fr_v, t_v, vol_v))
                 conn.commit(); conn.close()
-                st.success("Dados salvos na ficha!")
-    else:
-        st.warning("Cadastre um paciente primeiro.")
+                st.success("Dados salvos!")
 
 # --- TAB 3: HISTÓRICO ---
 with tab3:
-    busca = st.text_input("🔎 BUSCAR PACIENTE (Nome)").upper()
+    busca = st.text_input("🔎 BUSCAR PACIENTE").upper()
     if busca:
         conn = sqlite3.connect('nefroped_merces.db')
         p_data = pd.read_sql(f"SELECT * FROM pacientes WHERE nome LIKE '%{busca}%'", conn)
@@ -149,8 +135,7 @@ with tab3:
             p_sel = p_data.iloc[0]
             st.write(f"### {p_sel['nome']} | Leito: {p_sel['leito']}")
             
-            # Função para alertar PA Alta
-            def destacar_clinico(row):
+            def destacar_pa(row):
                 estilos = [''] * len(row)
                 try:
                     pas = int(str(row['pa']).split('/')[0])
@@ -159,14 +144,10 @@ with tab3:
                 except: pass
                 return estilos
 
-            st.divider()
-            st.write("**📊 Ficha de Monitorização Vascular e Metabólica**")
-            h_data = pd.read_sql(f"SELECT data, hora, peso, pa, fc, fr, temp, vol_24h FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY data DESC, hora DESC", conn)
+            st.write("**📊 Ficha de Monitorização**")
+            query = f"SELECT data, hora, peso, pa, fc, fr, temp, vol_24h FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY data DESC, hora DESC"
+            h_data = pd.read_sql(query, conn)
             
             if not h_data.empty:
-                st.dataframe(h_data.style.apply(destacar_clinico, axis=1), use_container_width=True)
-            else:
-                st.info("Sem registros de sinais vitais.")
-        else:
-            st.warning("Paciente não encontrado.")
+                st.dataframe(h_data.style.apply(destacar_pa, axis=1), use_container_width=True)
         conn.close()
