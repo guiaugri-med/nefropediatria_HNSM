@@ -7,17 +7,15 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="NefroPed - Mercês", page_icon="🩺", layout="wide")
 
-# --- INICIALIZAÇÃO DO BANCO DE DADOS ---
+# --- BANCO DE DADOS ---
 def init_db():
     conn = sqlite3.connect('nefroped_merces.db')
     c = conn.cursor()
-    # Tabela de Cadastro e Condutas Iniciais
     c.execute('''CREATE TABLE IF NOT EXISTS pacientes 
                  (id INTEGER PRIMARY KEY, nome TEXT, leito TEXT, data_admissao TEXT, 
                   anos INTEGER, meses INTEGER, dias INTEGER, sexo TEXT, k REAL, 
                   peso_seco REAL, estatura REAL, sc REAL, tfge REAL, 
                   dose_at REAL, dose_mn REAL, vol_alb REAL, dose_furo REAL)''')
-    # Tabela de Monitorização Diária - Atualizada com vol_24h
     c.execute('''CREATE TABLE IF NOT EXISTS monitorizacao 
                  (id INTEGER PRIMARY KEY, paciente_id INTEGER, data TEXT, hora TEXT, 
                   peso REAL, pa TEXT, fc INTEGER, fr INTEGER, temp REAL, vol_24h REAL)''')
@@ -26,13 +24,31 @@ def init_db():
 
 init_db()
 
-# --- INTERFACE ---
-st.title("🩺 Nefrologia Pediátrica - HNSM")
-st.caption("Protocolo: Schwartz 1 (Jaffé) | Unidade: Hospital Nossa Senhora das Mercês")
+# --- BARRA LATERAL (ALERTAS E RESET) ---
+with st.sidebar:
+    st.title("🩺 Gestão HNSM")
+    st.error("🚨 **Sinais de Alerta**")
+    with st.expander("Chamar Nefropediatra se:"):
+        st.write("- Oligúria (< 1 mL/kg/h)")
+        st.write("- Hematúria Macroscópica")
+        st.write("- Crise Hipertensiva")
+    
+    st.divider()
+    if st.button("⚠️ Resetar Banco de Dados"):
+        conn = sqlite3.connect('nefroped_merces.db')
+        c = conn.cursor()
+        c.execute("DROP TABLE IF EXISTS pacientes")
+        c.execute("DROP TABLE IF EXISTS monitorizacao")
+        conn.commit()
+        conn.close()
+        init_db()
+        st.rerun()
 
-tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Histórico de Pacientes"])
+# --- INTERFACE PRINCIPAL ---
+st.title("Calculadora de Nefrologia Pediátrica")
+tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Histórico"])
 
-# --- TAB 1: CADASTRO E CÁLCULOS ---
+# --- TAB 1: CADASTRO ---
 with tab1:
     with st.container(border=True):
         st.subheader("👤 Identificação e Admissão")
@@ -53,12 +69,9 @@ with tab1:
             prematuro = st.checkbox("Nasceu prematuro?")
             k_val, cat = (0.33, "RN Pré-termo") if prematuro else (0.45, "RN a termo")
         else:
-            if sexo_in == "Masculino" and anos_in >= 13:
-                k_val, cat = 0.70, "Adolescente Masculino"
-            else:
-                k_val, cat = 0.55, "Criança / Adolescente Feminino"
+            k_val, cat = (0.70, "Adolescente Masc.") if (sexo_in == "Masculino" and anos_in >= 13) else (0.55, "Criança/Adolescente Fem.")
             
-        st.info(f"**Categoria Detectada:** {cat} | **K utilizado:** {k_val}")
+        st.info(f"**Categoria Detectada:** {cat} | **K:** {k_val}")
         
         st.divider()
         st.subheader("🧪 Parâmetros Clínicos")
@@ -80,30 +93,28 @@ with tab1:
         c = conn.cursor()
         c.execute("INSERT INTO pacientes VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
                   (nome_in, leito_in, data_adm_in.strftime("%d/%m/%Y"), anos_in, meses_in, dias_in, sexo_in, k_val, p_in, e_in, sc_calc, tfge_calc, dose_at, dose_mn, vol_alb, dose_furo))
-        conn.commit()
-        conn.close()
+        conn.commit(); conn.close()
         
-        st.success(f"✅ Paciente {nome_in} cadastrado com sucesso!")
+        st.success(f"✅ Paciente {nome_in} cadastrado!")
         st.divider()
+        st.subheader("📋 Resumo de Admissão")
         r1, r2, r3 = st.columns(3)
         r1.metric("Superfície Corporal", f"{sc_calc:.2f} m²")
         r2.metric("TFGe (Schwartz 1)", f"{tfge_calc:.1f} mL/min")
-        r3.metric("K Utilizado", f"{k_val}")
-        st.warning(f"💊 **Corticoterapia:** Ataque: {dose_at:.1f} mg/dia | Manutenção: {dose_mn:.1f} mg (D.A.)")
-        st.info(f"💧 **Manejo de Edema:** Albumina 20%: {vol_alb:.1f} mL | Furosemida IV: {dose_furo:.1f} mg")
+        st.warning(f"💊 **Prednisolona:** Ataque: {dose_at:.1f} mg/dia | Manut: {dose_mn:.1f} mg (DA)")
+        st.info(f"💧 **Edema:** Albumina 20%: {vol_alb:.1f} mL | Furosemida: {dose_furo:.1f} mg")
 
-# --- TAB 2: MONITORIZAÇÃO DIÁRIA ---
+# --- TAB 2: MONITORIZAÇÃO ---
 with tab2:
     conn = sqlite3.connect('nefroped_merces.db')
-    pacs = pd.read_sql("SELECT id, nome, leito FROM pacientes", conn)
-    conn.close()
+    pacs = pd.read_sql("SELECT id, nome, leito FROM pacientes", conn); conn.close()
     
     if not pacs.empty:
-        escolha = st.selectbox("Selecione o Paciente para Evolução", pacs['nome'] + " (Leito: " + pacs['leito'] + ")")
+        escolha = st.selectbox("Selecione o Paciente", pacs['nome'] + " (Leito: " + pacs['leito'] + ")")
         pac_id = int(pacs[pacs['nome'] == escolha.split(" (")[0]]['id'].iloc[0])
         
-        st.subheader("🩺 Registro de Sinais Vitais")
         with st.container(border=True):
+            st.subheader("🩺 Registro de Sinais Vitais")
             c_m1, c_m2 = st.columns(2)
             d_v = c_m1.date_input("Data do Registro")
             h_v = c_m2.selectbox("Hora", ["08:00", "14:00", "20:00"])
@@ -117,13 +128,11 @@ with tab2:
             vol_v = v6.number_input("Vol. Urina 24h (mL)", 0)
             
             if st.button("Salvar na Ficha de Monitorização"):
-                conn = sqlite3.connect('nefroped_merces.db')
-                c = conn.cursor()
+                conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
                 c.execute("INSERT INTO monitorizacao (paciente_id, data, hora, peso, pa, fc, fr, temp, vol_24h) VALUES (?,?,?,?,?,?,?,?,?,?)",
                           (pac_id, d_v.strftime("%d/%m/%Y"), h_v, p_v, pa_v, fc_v, fr_v, t_v, vol_v))
-                conn.commit()
-                conn.close()
-                st.success("Dados salvos com sucesso!")
+                conn.commit(); conn.close()
+                st.success("Dados salvos!")
     else:
         st.warning("Cadastre um paciente primeiro.")
 
@@ -142,31 +151,17 @@ with tab3:
                 estilos = [''] * len(row)
                 try:
                     pas = int(str(row['pa']).split('/')[0])
-                    if pas >= 130:
-                        estilos[row.index.get_loc('pa')] = 'background-color: #ffcccc; color: red; font-weight: bold'
-                    if 'debito' in row and 0 < row['debito'] < 1.0:
-                        estilos[row.index.get_loc('debito')] = 'background-color: #fff3cd; color: #856404'
+                    if pas >= 130: estilos[row.index.get_loc('pa')] = 'background-color: #ffcccc; color: red; font-weight: bold'
+                    if 'debito' in row and 0 < row['debito'] < 1.0: estilos[row.index.get_loc('debito')] = 'background-color: #fff3cd; color: #856404'
                 except: pass
                 return estilos
 
-            st.divider()
-            st.write("**📊 Ficha de Monitorização Vascular e Metabólica**")
-            h_data = pd.read_sql(f"SELECT data, hora, peso, pa, fc, fr, temp, vol_24h FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY data DESC, hora DESC", conn)
+            query_h = f"SELECT data, hora, peso, pa, fc, fr, temp, vol_24h FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY data DESC, hora DESC"
+            h_data = pd.read_sql(query_h, conn)
             
             if not h_data.empty:
                 h_data['debito'] = h_data['vol_24h'] / p_sel['peso_seco'] / 24
-                h_data_estilizado = h_data.style.apply(destacar_clinico, axis=1)
-                st.dataframe(h_data_estilizado, use_container_width=True)
+                st.dataframe(h_data.style.apply(destacar_clinico, axis=1), use_container_width=True)
             else:
                 st.info("Sem registros para este paciente.")
-        else:
-            st.warning("Paciente não encontrado.")
         conn.close()
-
-# SIDEBAR
-with st.sidebar:
-    st.error("🚨 **Sinais de Alerta**")
-    with st.expander("Chamar Nefropediatra se:"):
-        st.write("- Oligúria (< 1 mL/kg/h)")
-        st.write("- Hematúria Macroscópica")
-        st.write("- Crise Hipertensiva")
