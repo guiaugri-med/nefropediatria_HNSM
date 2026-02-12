@@ -72,11 +72,11 @@ init_db()
 # --- 3. BARRA LATERAL (LAYOUT RICO) ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=50)
-    st.title("Gestão HNSM")
+    st.title("Pediatria - Hospital Nossa Senhora das Mercês")
     st.markdown("---")
     
     st.error("🚨 **Sinais de Alerta**")
-    with st.expander("Critérios de Gravidade", expanded=True):
+    with st.expander("Quando chamar o Nefropediatra", expanded=True):
         st.markdown("""
         - **Oligúria:** < 1 mL/kg/h
         - **Hipertensão:** PAS ≥ P95
