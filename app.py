@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 # --- 1. DADOS DE REFERÊNCIA SBP 2019 (CÉREBRO DA CLASSIFICAÇÃO) ---
-# [cite_start]Fonte: Manual de Orientação SBP 2019 [cite: 36, 124, 125, 126]
+# [cite_start]Fonte: Manual de Orientação SBP 2019 [cite: 36]
 BP_DATA = {
     'M': { 
         1: {'ht': [77, 78, 80, 82, 85, 87, 88], 'pas90': [98,99,99,100,101,101,102], 'pas95': [102,102,103,103,104,105,105], 'pad90': [52,52,53,53,54,54,54], 'pad95': [54,54,55,55,56,57,57]},
@@ -26,7 +26,7 @@ def get_bp_limits(sexo, idade, altura_cm):
     if idade >= 13: 
         return {'p90s': 120, 'p95s': 130, 'p99s': 140, 'p90d': 80, 'p95d': 80, 'p99d': 90}
     
-    # [cite_start]Regra Criança < 13 anos (Percentis - Tabelas 1 e 2 SBP 2019) [cite: 114, 124]
+    # [cite_start]Regra Criança < 13 anos (Percentis - Tabelas 1 e 2 SBP 2019) [cite: 114]
     idades_disp = [1, 5, 10, 13]
     idade_prox = min(idades_disp, key=lambda x: abs(x - idade))
     table = BP_DATA[sexo][idade_prox]
@@ -37,12 +37,12 @@ def get_bp_limits(sexo, idade, altura_cm):
     p95s = table['pas95'][closest_idx]
     p95d = table['pad95'][closest_idx]
     
-    # [cite_start]Definição de Estágio 2: >= P95 + 12mmHg [cite: 37]
+    # Definição de Estágio 2: >= P95 + 12mmHg
     return {'p90s': table['pas90'][closest_idx], 'p95s': p95s, 'p99s': p95s + 12, 
             'p90d': table['pad90'][closest_idx], 'p95d': p95d, 'p99d': p95d + 12}
 
 def classificar_pa_auto(pas, pad, limites):
-    # [cite_start]Lógica de Classificação SBP 2019 [cite: 37, 98]
+    # [cite_start]Lógica de Classificação SBP 2019 [cite: 36]
     if (pas >= limites['p99s']) or (pad >= limites['p99d']): return "ESTÁGIO 2", "red"
     elif (pas >= limites['p95s']) or (pad >= limites['p95d']): return "ESTÁGIO 1", "orange"
     elif (pas >= limites['p90s']) or (pad >= limites['p90d']): return "ELEVADA", "yellow"
@@ -60,7 +60,7 @@ def init_db():
                   peso_seco REAL, estatura REAL, sc REAL, tfge REAL, 
                   dose_at REAL, dose_mn REAL, vol_alb REAL, dose_furo REAL)''')
     
-    # Tabela Completa com todos os sinais vitais
+    # Tabela Completa com todos os sinais vitais incluindo FR
     c.execute('''CREATE TABLE IF NOT EXISTS monitorizacao 
                  (id INTEGER PRIMARY KEY, paciente_id INTEGER, data TEXT, hora TEXT, 
                   peso REAL, pa TEXT, fc INTEGER, fr INTEGER, temp REAL, vol_24h REAL,
@@ -161,11 +161,16 @@ with tab2:
         
         with st.container(border=True):
             st.subheader("🩺 Registro de Sinais Vitais")
+            
+            # Linha 1: Data e Hora
             c1, c2 = st.columns(2)
             d_reg = c1.date_input("Data")
             h_reg = c2.selectbox("Hora", ["08:00", "14:00", "20:00", "Extra"])
             
-            st.write("**Pressão Arterial:**")
+            st.write("---")
+            
+            # Linha 2: Avaliação Hemodinâmica (PA)
+            st.write("**Hemodinâmica:**")
             col_pa1, col_pa2 = st.columns(2)
             pas = col_pa1.number_input("PAS (Sistólica)", 0, 300, 110)
             pad = col_pa2.number_input("PAD (Diastólica)", 0, 200, 70)
@@ -173,10 +178,13 @@ with tab2:
             # Automação SBP 2019
             limites = get_bp_limits(p_data['sexo'], p_data['anos'], p_data['estatura'])
             status_pa, cor_pa = classificar_pa_auto(pas, pad, limites)
-            st.markdown(f"**Classificação Automática:** :{cor_pa}[**{status_pa}**]")
+            st.caption(f"Referência SBP: P95={limites['p95s']}/{limites['p95d']} | P99+5={limites['p99s']}/{limites['p99d']}")
+            st.markdown(f"#### Classificação: :{cor_pa}[{status_pa}]")
             
-            st.write("**Outros Parâmetros:**")
-            # Layout em grid para todos os sinais vitais
+            st.write("---")
+            
+            # Linha 3: Outros Sinais Vitais (TODOS INCLUÍDOS)
+            st.write("**Dados Clínicos e Hídricos:**")
             v1, v2, v3, v4, v5 = st.columns(5)
             p_v = v1.number_input("Peso (kg)", format="%.2f")
             fc = v2.number_input("FC (bpm)", 0)
