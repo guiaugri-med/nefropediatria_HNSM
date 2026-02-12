@@ -22,14 +22,19 @@ BP_DATA = {
 }
 
 def get_bp_limits(sexo, idade, altura_cm):
-    # [cite_start]Regra Adolescente >= 13 anos (Critérios Fixos - Quadro 4 SBP 2019) [cite: 98]
+    # BLINDAGEM: Converte "Masculino" para "M" e "Feminino" para "F" se necessário
+    sexo_tratado = 'M' if sexo.upper().startswith('M') else 'F'
+    
+    # Regra Adolescente >= 13 anos (Critérios Fixos - Quadro 4 SBP 2019)
     if idade >= 13: 
         return {'p90s': 120, 'p95s': 130, 'p99s': 140, 'p90d': 80, 'p95d': 80, 'p99d': 90}
     
-    # [cite_start]Regra Criança < 13 anos (Percentis - Tabelas 1 e 2 SBP 2019) [cite: 114]
+    # Regra Criança < 13 anos (Percentis - Tabelas 1 e 2 SBP 2019)
     idades_disp = [1, 5, 10, 13]
     idade_prox = min(idades_disp, key=lambda x: abs(x - idade))
-    table = BP_DATA[sexo][idade_prox]
+    
+    # Usa o sexo tratado para buscar na tabela
+    table = BP_DATA[sexo_tratado][idade_prox]
     
     # Encontra a coluna da estatura mais próxima
     closest_idx = min(range(len(table['ht'])), key=lambda i: abs(table['ht'][i] - altura_cm))
@@ -37,7 +42,6 @@ def get_bp_limits(sexo, idade, altura_cm):
     p95s = table['pas95'][closest_idx]
     p95d = table['pad95'][closest_idx]
     
-    # Definição de Estágio 2: >= P95 + 12mmHg
     return {'p90s': table['pas90'][closest_idx], 'p95s': p95s, 'p99s': p95s + 12, 
             'p90d': table['pad90'][closest_idx], 'p95d': p95d, 'p99d': p95d + 12}
 
