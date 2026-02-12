@@ -4,17 +4,16 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 
-# --- 1. DADOS DE REFERÊNCIA SBP 2019 (TABELAS SIMPLIFICADAS) ---
-# Fonte: Manual de Orientação - Depto. Científico de Nefrologia (SBP 2019)
-# Estrutura: { Sexo: { Idade: { 'ht': [alturas], 'pas90': [...], 'pas95': [...], 'pad90': [...], 'pad95': [...] } } }
+# --- 1. DADOS DE REFERÊNCIA SBP 2019 (CÉREBRO DA CLASSIFICAÇÃO) ---
+# [cite_start]Fonte: Manual de Orientação SBP 2019 [cite: 36, 124, 125, 126]
 BP_DATA = {
-    'M': { # MENINOS
+    'M': { 
         1: {'ht': [77, 78, 80, 82, 85, 87, 88], 'pas90': [98,99,99,100,101,101,102], 'pas95': [102,102,103,103,104,105,105], 'pad90': [52,52,53,53,54,54,54], 'pad95': [54,54,55,55,56,57,57]},
         5: {'ht': [104,106,109,112,116,119,120], 'pas90': [103,104,105,106,107,108,109], 'pas95': [107,107,108,109,110,111,112], 'pad90': [63,63,64,65,66,66,67], 'pad95': [69,69,70,71,72,72,73]},
         10: {'ht': [130,133,137,141,146,150,153], 'pas90': [108,109,111,113,115,116,117], 'pas95': [113,113,115,117,119,120,121], 'pad90': [72,73,73,74,75,76,76], 'pad95': [77,77,78,79,80,80,81]},
         13: {'ht': [148,152,158,164,170,175,179], 'pas90': [113,114,115,117,119,121,122], 'pas95': [116,117,118,124,124,121,128], 'pad90': [74,74,74,75,76,76,77], 'pad95': [78,78,78,78,79,79,80]},
     },
-    'F': { # MENINAS
+    'F': { 
         1: {'ht': [75,77,79,81,83,85,86], 'pas90': [98,99,99,100,101,102,102], 'pas95': [101,102,102,103,104,105,105], 'pad90': [54,55,56,57,58,58,58], 'pad95': [59,59,60,60,61,61,62]},
         5: {'ht': [104,105,108,112,115,118,120], 'pas90': [103,104,105,106,107,108,109], 'pas95': [107,108,109,110,111,112,112], 'pad90': [64,64,65,66,67,68,69], 'pad95': [69,69,70,71,72,72,73]},
         10: {'ht': [130,132,136,141,146,150,153], 'pas90': [109,110,111,112,113,115,116], 'pas95': [113,114,115,116,117,119,120], 'pad90': [72,73,73,73,74,75,75], 'pad95': [76,77,77,77,78,79,80]},
@@ -23,10 +22,11 @@ BP_DATA = {
 }
 
 def get_bp_limits(sexo, idade, altura_cm):
-    if idade >= 13: # Regra Adolescente SBP 2019
+    # [cite_start]Regra Adolescente >= 13 anos (Critérios Fixos - Quadro 4 SBP 2019) [cite: 98]
+    if idade >= 13: 
         return {'p90s': 120, 'p95s': 130, 'p99s': 140, 'p90d': 80, 'p95d': 80, 'p99d': 90}
     
-    # Regra Criança < 13 anos (Aproximação pela idade mais próxima na tabela)
+    # [cite_start]Regra Criança < 13 anos (Percentis - Tabelas 1 e 2 SBP 2019) [cite: 114, 124]
     idades_disp = [1, 5, 10, 13]
     idade_prox = min(idades_disp, key=lambda x: abs(x - idade))
     table = BP_DATA[sexo][idade_prox]
@@ -37,10 +37,12 @@ def get_bp_limits(sexo, idade, altura_cm):
     p95s = table['pas95'][closest_idx]
     p95d = table['pad95'][closest_idx]
     
+    # [cite_start]Definição de Estágio 2: >= P95 + 12mmHg [cite: 37]
     return {'p90s': table['pas90'][closest_idx], 'p95s': p95s, 'p99s': p95s + 12, 
             'p90d': table['pad90'][closest_idx], 'p95d': p95d, 'p99d': p95d + 12}
 
 def classificar_pa_auto(pas, pad, limites):
+    # [cite_start]Lógica de Classificação SBP 2019 [cite: 37, 98]
     if (pas >= limites['p99s']) or (pad >= limites['p99d']): return "ESTÁGIO 2", "red"
     elif (pas >= limites['p95s']) or (pad >= limites['p95d']): return "ESTÁGIO 1", "orange"
     elif (pas >= limites['p90s']) or (pad >= limites['p90d']): return "ELEVADA", "yellow"
@@ -57,6 +59,8 @@ def init_db():
                   anos INTEGER, meses INTEGER, dias INTEGER, sexo TEXT, k REAL, 
                   peso_seco REAL, estatura REAL, sc REAL, tfge REAL, 
                   dose_at REAL, dose_mn REAL, vol_alb REAL, dose_furo REAL)''')
+    
+    # Tabela Completa com todos os sinais vitais
     c.execute('''CREATE TABLE IF NOT EXISTS monitorizacao 
                  (id INTEGER PRIMARY KEY, paciente_id INTEGER, data TEXT, hora TEXT, 
                   peso REAL, pa TEXT, fc INTEGER, fr INTEGER, temp REAL, vol_24h REAL,
@@ -72,7 +76,7 @@ with st.sidebar:
     st.markdown("---")
     
     st.error("🚨 **Sinais de Alerta**")
-    with st.expander("Ver Critérios de Gravidade", expanded=True):
+    with st.expander("Critérios de Gravidade", expanded=True):
         st.markdown("""
         - **Oligúria:** < 1 mL/kg/h
         - **Hipertensão:** PAS ≥ P95
@@ -135,7 +139,6 @@ with tab1:
             conn.commit(); conn.close()
             st.toast(f"Paciente {nome_in} cadastrado com sucesso!")
 
-            # LAYOUT RICO DE RESULTADOS
             st.write("---")
             st.subheader("📊 Resultados Clínicos")
             m1, m2, m3 = st.columns(3)
@@ -147,7 +150,7 @@ with tab1:
             c1.warning(f"💊 **Prednisolona**\n\n- Ataque: **{at:.1f} mg/dia**\n- Manut.: **{mn:.1f} mg (DA)**")
             c2.info(f"💧 **Manejo de Edema**\n\n- Albumina 20%: **{alb:.1f} mL**\n- Furosemida: **{furo:.1f} mg**")
 
-# --- TAB 2: MONITORIZAÇÃO ---
+# --- TAB 2: MONITORIZAÇÃO COMPLETA ---
 with tab2:
     conn = sqlite3.connect('nefroped_merces.db')
     pacs = pd.read_sql("SELECT id, nome, anos, sexo, estatura FROM pacientes", conn); conn.close()
@@ -162,26 +165,30 @@ with tab2:
             d_reg = c1.date_input("Data")
             h_reg = c2.selectbox("Hora", ["08:00", "14:00", "20:00", "Extra"])
             
-            c1, c2, c3, c4 = st.columns(4)
-            pas = c1.number_input("PAS (Sistólica)", 0, 300, 110)
-            pad = c2.number_input("PAD (Diastólica)", 0, 200, 70)
+            st.write("**Pressão Arterial:**")
+            col_pa1, col_pa2 = st.columns(2)
+            pas = col_pa1.number_input("PAS (Sistólica)", 0, 300, 110)
+            pad = col_pa2.number_input("PAD (Diastólica)", 0, 200, 70)
             
-            # --- CÉREBRO DA CLASSIFICAÇÃO AUTOMÁTICA SBP 2019 ---
+            # Automação SBP 2019
             limites = get_bp_limits(p_data['sexo'], p_data['anos'], p_data['estatura'])
             status_pa, cor_pa = classificar_pa_auto(pas, pad, limites)
-            
             st.markdown(f"**Classificação Automática:** :{cor_pa}[**{status_pa}**]")
             
-            c1, c2, c3, c4 = st.columns(4)
-            p_v = c1.number_input("Peso (kg)", format="%.2f")
-            fc = c2.number_input("FC (bpm)", 0)
-            temp = c3.number_input("Temp (ºC)", 36.5)
-            vol = c4.number_input("Diurese 24h (mL)", 0)
+            st.write("**Outros Parâmetros:**")
+            # Layout em grid para todos os sinais vitais
+            v1, v2, v3, v4, v5 = st.columns(5)
+            p_v = v1.number_input("Peso (kg)", format="%.2f")
+            fc = v2.number_input("FC (bpm)", 0)
+            fr = v3.number_input("FR (irpm)", 0) # Campo recuperado
+            temp = v4.number_input("Temp (ºC)", 36.5)
+            vol = v5.number_input("Diurese 24h (mL)", 0)
             
             if st.button("💾 Salvar Evolução"):
                 conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
+                # Inserção completa com FR, FC, Diurese, etc.
                 c.execute("INSERT INTO monitorizacao (paciente_id, data, hora, peso, pa, fc, fr, temp, vol_24h, classif_pa) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                          (int(p_data['id']), d_reg.strftime("%d/%m"), h_reg, p_v, f"{pas}/{pad}", fc, 0, temp, vol, status_pa))
+                          (int(p_data['id']), d_reg.strftime("%d/%m"), h_reg, p_v, f"{pas}/{pad}", fc, fr, temp, vol, status_pa))
                 conn.commit(); conn.close()
                 st.success("Dados salvos!")
     else:
@@ -207,10 +214,10 @@ with tab3:
             st.divider()
             st.markdown("#### 📊 Histórico de Monitorização")
             
-            h_data = pd.read_sql(f"SELECT data, hora, pa, classif_pa, peso, vol_24h, temp FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY id DESC", conn)
+            # Query completa
+            h_data = pd.read_sql(f"SELECT data, hora, pa, classif_pa, peso, fc, fr, temp, vol_24h FROM monitorizacao WHERE paciente_id = {p_sel['id']} ORDER BY id DESC", conn)
             
             if not h_data.empty:
-                # Cálculo de Débito Urinário para Alerta
                 h_data['debito'] = h_data['vol_24h'] / p_sel['peso_seco'] / 24
                 
                 def colorir(row):
@@ -223,6 +230,6 @@ with tab3:
                     if 0 < row['debito'] < 1.0: estilos[row.index.get_loc('vol_24h')] = 'background-color: #ffffcc; color: red; font-weight: bold'
                     return estilos
 
-                st.dataframe(h_data.style.apply(colorir, axis=1).format({'debito': '{:.2f}', 'peso': '{:.2f}'}), use_container_width=True)
+                st.dataframe(h_data.style.apply(colorir, axis=1).format({'debito': '{:.2f}', 'peso': '{:.2f}', 'temp': '{:.1f}'}), use_container_width=True)
                 st.caption("Legenda: 🟥 Estágio 2 | 🟧 Estágio 1 | 🟨 Elevada/Oligúria")
         conn.close()
