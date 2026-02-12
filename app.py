@@ -198,9 +198,13 @@ with tab2:
             
             if st.button("💾 Salvar Evolução"):
                 conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
-                # Inserção completa com FR, FC, Diurese, etc.
-                c.execute("INSERT INTO monitorizacao (paciente_id, data, hora, peso, pa, fc, fr, temp, vol_24h, classif_pa) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                
+                # CORREÇÃO PONTUAL: 10 colunas = 10 interrogações (?)
+                c.execute("""INSERT INTO monitorizacao 
+                             (paciente_id, data, hora, peso, pa, fc, fr, temp, vol_24h, classif_pa) 
+                             VALUES (?,?,?,?,?,?,?,?,?,?)""",
                           (int(p_data['id']), d_reg.strftime("%d/%m"), h_reg, p_v, f"{pas}/{pad}", fc, fr, temp, vol, status_pa))
+                
                 conn.commit(); conn.close()
                 st.success("Dados salvos!")
     else:
