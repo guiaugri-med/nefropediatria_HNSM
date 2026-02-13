@@ -132,28 +132,42 @@ with tab1:
         cr_in = c3.number_input("Creatinina (mg/dL)", 0.1, 15.0, 0.6)
         
         if st.button("💾 Salvar e Calcular", type="primary"):
+            # 1. Cálculos Gerais
             sc = math.sqrt((p_in * e_in) / 3600)
             tfge = (k_val * e_in) / cr_in
-            at, mn = min(sc * 60, 60.0), min(sc * 40, 40.0)
-            alb, furo = (p_in * 0.5) * 5, p_in * 0.5
             
+            # 2. Novo Cálculo Prednisolona (HNSM: 2mg/kg | Conc: 3mg/mL)
+            # Dose Ataque: 2 mg/kg (Teto 60mg diários)
+            dose_at_mg = min(p_in * 2.0, 60.0) 
+            vol_at_ml = dose_at_mg / 3.0       # Converte mg para mL (Concentração 3mg/mL)
+            
+            # Dose Manutenção: 1.5 mg/kg (Teto 40mg diários - Dias Alternados)
+            dose_mn_mg = min(p_in * 1.5, 40.0)
+            vol_mn_ml = dose_mn_mg / 3.0       # Converte mg para mL
+            
+            # 3. Outros medicamentos
+            alb = (p_in * 0.5) * 5 # Albumina 20%
+            furo = p_in * 0.5      # Furosemida
+            
+            # 4. Salvar no Banco (Salvamos em mg para registro clínico universal)
             conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
             c.execute("INSERT INTO pacientes VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
-                      (nome_in, leito_in, datetime.now().strftime("%d/%m"), anos, meses, 0, sexo, k_val, p_in, e_in, sc, tfge, at, mn, alb, furo))
+                      (nome_in, leito_in, datetime.now().strftime("%d/%m"), anos, meses, 0, sexo, k_val, p_in, e_in, sc, tfge, dose_at_mg, dose_mn_mg, alb, furo))
             conn.commit(); conn.close()
             st.toast(f"Paciente {nome_in} cadastrado com sucesso!")
 
+            # 5. Exibição de Resultados (EM ML)
             st.write("---")
             st.subheader("📊 Resultados Clínicos")
             m1, m2, m3 = st.columns(3)
             m1.metric("Superfície Corporal", f"{sc:.2f} m²")
             m2.metric("TFGe (Schwartz)", f"{tfge:.1f} mL/min")
-            m3.metric("K Utilizado", f"{k_val}")
+            m3.metric("Peso Utilizado", f"{p_in:.1f} kg")
             
             c1, c2 = st.columns(2)
-            c1.warning(f"💊 **Prednisolona**\n\n- Ataque: **{at:.1f} mg/dia**\n- Manut.: **{mn:.1f} mg (DA)**")
+            # Mostra o mL em destaque e o mg entre parênteses
+            c1.warning(f"💊 **Prednisolona (3 mg/mL)**\n\n- Ataque: **{vol_at_ml:.1f} mL** ({dose_at_mg:.0f} mg)\n- Manut.: **{vol_mn_ml:.1f} mL** ({dose_mn_mg:.0f} mg)")
             c2.info(f"💧 **Manejo de Edema**\n\n- Albumina 20%: **{alb:.1f} mL**\n- Furosemida: **{furo:.1f} mg**")
-
 # --- TAB 2: MONITORIZAÇÃO COMPLETA ---
 with tab2:
     conn = sqlite3.connect('nefroped_merces.db')
