@@ -117,7 +117,7 @@ init_db()
 # --- 3. BARRA LATERAL COM LOGIN ---
 with st.sidebar:
     st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRA56LAYwChMUASMvAiUzJovteq8vizuaUn6A&s", width=150)
-    st.title("Gestão HNSM")
+    st.title("Pediatria - Hospital de Nossa Senhora das Mercês")
     
     # SE NÃO ESTIVER LOGADO
     if 'usuario_email' not in st.session_state:
