@@ -166,7 +166,7 @@ if 'usuario_email' not in st.session_state:
 
 # (O restante do seu código original começa aqui: tab1, tab2, tab3...)
 tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Prontuário"])
-tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Prontuário"])
+
 
 # --- TAB 1: CADASTRO ---
 with tab1:
