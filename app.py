@@ -52,6 +52,47 @@ def classificar_pa_auto(pas, pad, limites):
     elif (pas >= limites['p90s']) or (pad >= limites['p90d']): return "ELEVADA", "yellow"
     else: return "NORMOTENSO", "green"
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# --- CONFIGURAÇÃO DE E-MAIL (PREENCHA AQUI) ---
+EMAIL_REMETENTE = "seu_email_aqui@gmail.com" # <--- SUBSTITUA PELO SEU GMAIL
+SENHA_APP = "sua_senha_de_app_aqui"          # <--- SUBSTITUA PELA SENHA DE APP
+
+# --- FUNÇÃO DE ENVIO DE E-MAIL ---
+def enviar_relatorio(destinatario, paciente, historico):
+    if "seu_email" in EMAIL_REMETENTE:
+        st.error("⚠️ Configure o e-mail no código para funcionar!")
+        return
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_REMETENTE
+        msg['To'] = destinatario
+        msg['Subject'] = f"Relatório Médico: {paciente['nome']} - HNSM"
+
+        html = f"""
+        <html><body>
+            <h2 style="color:#2c3e50">Hospital Nossa Senhora das Mercês</h2>
+            <p><strong>Paciente:</strong> {paciente['nome']} | <strong>Idade:</strong> {paciente['anos']} anos</p>
+            <p><strong>SC:</strong> {paciente['sc']:.2f} m² | <strong>TFGe:</strong> {paciente['tfge']:.1f}</p>
+            <h4>Conduta:</h4>
+            <ul><li>Prednisolona Ataque: {paciente['dose_at']:.1f} mg</li></ul>
+            <h4>Últimos Sinais Vitais:</h4>
+            {historico[['data','hora','pa','classif_pa','peso','vol_24h']].to_html(index=False, border=1)}
+        </body></html>
+        """
+        msg.attach(MIMEText(html, 'html'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_REMETENTE, SENHA_APP)
+        server.sendmail(EMAIL_REMETENTE, destinatario, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        return str(e)
+
 # --- 2. CONFIGURAÇÃO E BANCO ---
 st.set_page_config(page_title="NefroPed - HNSM", page_icon="🩺", layout="wide")
 
@@ -73,36 +114,63 @@ def init_db():
 
 init_db()
 
-# --- 3. BARRA LATERAL (LAYOUT RICO) ---
+# --- 3. BARRA LATERAL COM LOGIN ---
 with st.sidebar:
-    # Substituí o desenho antigo pelo seu novo logo
     st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRA56LAYwChMUASMvAiUzJovteq8vizuaUn6A&s", width=150)
-    st.title("Pediatria - Hospital de Nossa Senhora das Mercês")
-    st.markdown("---")
+    st.title("Gestão HNSM")
     
-    st.error("🚨 **Sinais de Alerta**")
-    with st.expander("Quando acionar a Nefropediatria", expanded=True):
-        st.markdown("""
-        - **Oligúria:** < 1 mL/kg/h
-        - **Hipertensão:** PAS ≥ P95
-        - **Hematúria:** Macroscópica
-        - **PBE:** Dor abdominal + Febre
-        """)
-    
-    st.info("ℹ️ **Protocolos:**\n- Schwartz 1 (Jaffé)\n- SBP 2019 (Hipertensão)")
-    
-    st.divider()
-    if st.button("⚠️ Resetar Banco de Dados"):
-        conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
-        c.execute("DROP TABLE IF EXISTS pacientes"); c.execute("DROP TABLE IF EXISTS monitorizacao")
-        conn.commit(); conn.close(); init_db(); st.rerun()
+    # SE NÃO ESTIVER LOGADO
+    if 'usuario_email' not in st.session_state:
+        st.markdown("### 🔐 Acesso Médico")
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        if st.button("Entrar"):
+            if email and senha: # Adicione validação de senha real aqui se quiser
+                st.session_state['usuario_email'] = email
+                st.rerun()
+            else:
+                st.error("Preencha os dados.")
+        st.stop() # PARA A EXECUÇÃO DO RESTO DA PÁGINA AQUI
+
+    # SE ESTIVER LOGADO (MOSTRA AS FERRAMENTAS)
+    else:
+        st.success(f"Logado: {st.session_state['usuario_email']}")
+        if st.button("Sair"):
+            del st.session_state['usuario_email']
+            st.rerun()
+            
+        st.markdown("---")
+        st.error("🚨 **Sinais de Alerta**")
+        with st.expander("Quando acionar a Nefropediatria", expanded=True):
+            st.markdown("""
+            - **Oligúria:** < 1 mL/kg/h
+            - **Hipertensão:** PAS ≥ P95
+            - **Hematúria:** Macroscópica
+            - **PBE:** Dor abdominal + Febre
+            """)
+        
+        st.divider()
+        if st.button("⚠️ Resetar Banco de Dados"):
+            conn = sqlite3.connect('nefroped_merces.db'); c = conn.cursor()
+            c.execute("DROP TABLE IF EXISTS pacientes"); c.execute("DROP TABLE IF EXISTS monitorizacao")
+            conn.commit(); conn.close(); init_db(); st.rerun()
 
 # --- # --- 4. INTERFACE PRINCIPAL ---
 # Exibe a logo centralizada ou alinhada (ajuste o width conforme necessário)
 st.image("https://alfred.alboompro.com/resize/width/370/height/150/quality/99/url/storage.alboom.ninja/sites/261239/img/logo/logo_hor.png?t=1741614330", width=300)
 
 st.title("Calculadora de Nefrologia Pediátrica")
+# --- 4. INTERFACE PRINCIPAL ---
+st.image("https://alfred.alboompro.com/resize/width/370/height/150/quality/99/url/storage.alboom.ninja/sites/261239/img/logo/logo_hor.png?t=1741614330", width=300)
+st.title("Calculadora de Nefrologia Pediátrica")
 
+# VERIFICAÇÃO DE SEGURANÇA
+if 'usuario_email' not in st.session_state:
+    st.warning("👈 Por favor, faça login na barra lateral para acessar o sistema.")
+    st.stop()
+
+# (O restante do seu código original começa aqui: tab1, tab2, tab3...)
+tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Prontuário"])
 tab1, tab2, tab3 = st.tabs(["🔢 Cadastro e Cálculos", "📋 Monitorização Diária", "📂 Prontuário"])
 
 # --- TAB 1: CADASTRO ---
