@@ -75,7 +75,8 @@ init_db()
 
 # --- 3. BARRA LATERAL (LAYOUT RICO) ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=50)
+    # Substituí o desenho antigo pelo seu novo logo
+    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRA56LAYwChMUASMvAiUzJovteq8vizuaUn6A&s", width=150)
     st.title("Pediatria - Hospital de Nossa Senhora das Mercês")
     st.markdown("---")
     
