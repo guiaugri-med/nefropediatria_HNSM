@@ -155,11 +155,6 @@ with st.sidebar:
             c.execute("DROP TABLE IF EXISTS pacientes"); c.execute("DROP TABLE IF EXISTS monitorizacao")
             conn.commit(); conn.close(); init_db(); st.rerun()
 
-# --- # --- 4. INTERFACE PRINCIPAL ---
-# Exibe a logo centralizada ou alinhada (ajuste o width conforme necessário)
-st.image("https://alfred.alboompro.com/resize/width/370/height/150/quality/99/url/storage.alboom.ninja/sites/261239/img/logo/logo_hor.png?t=1741614330", width=300)
-
-st.title("Calculadora de Nefrologia Pediátrica")
 # --- 4. INTERFACE PRINCIPAL ---
 st.image("https://alfred.alboompro.com/resize/width/370/height/150/quality/99/url/storage.alboom.ninja/sites/261239/img/logo/logo_hor.png?t=1741614330", width=300)
 st.title("Calculadora de Nefrologia Pediátrica")
